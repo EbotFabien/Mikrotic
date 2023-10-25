@@ -1,2 +1,6 @@
 FLASK_APP=MIKROTIC.py
 FLASK_DEBUG=TRUE
+
+SQLAlchemy==2.0.21
+
+greenlet==2.0.2

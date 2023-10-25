@@ -7,6 +7,8 @@ WORKDIR /home/mikrotic
 COPY req.txt req.txt
 RUN python -m venv venv
 RUN venv/bin/pip install -r req.txt
+RUN venv/bin/pip install --only-binary :all: greenlet
+RUN venv/bin/pip install --only-binary :all: Flask-SQLAlchemy
 RUN venv/bin/pip install gunicorn
 
 COPY app app
