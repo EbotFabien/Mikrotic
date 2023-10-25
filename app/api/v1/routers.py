@@ -77,6 +77,12 @@ modify= router.model('modify', {
     'update':fields.String(required=False,default=" ", description="Users mdp"),
    
 })
+test= router.model('test', {
+    "ip":fields.String(required=False,default=" ", description="ip address"),
+    'login':fields.String(required=False,default=" ", description="User"),
+    'mdp':fields.String(required=False,default=" ", description="Users mdp"),
+   
+})
 
 @router.doc(
     security='KEY',
@@ -108,21 +114,44 @@ class routercommand(Resource):
             if check:
                 try:
                     if req_data["command"] == '1':
-                        command='/system package update check-for-updates'
-                    if req_data["command"] == '2':
                         command='/system package update install'
-                    if req_data["command"] == '3':
-                        command='/system routerboard print'
-                    if req_data["command"] == '4':
+                    if req_data["command"] == '2':
                         command='/system routerboard upgrade'
+                    if req_data["command"] == '3':
+                        command='system reboot'
                     
+                
+                    
+                    #/system routerboard print
+                    #/system routerboard upgrade
+                    #system reboot
                     default=datetime.now()
                     ssh = paramiko.SSHClient()
                     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
                     ssh.connect(hostname=check.ip, username=check.login, password=check.mdp)
+                    if req_data['command'] == '2':
+                        ssh.exec_command(command)
+                        ssh.exec_command('system reboot')
+                        stdin,stdout,stderr=ssh.exec_command('/system routerboard print')
+                        response=stdout.readlines()
+                        model=response[1].strip()
+                        model=model[model.find(':')+1:]
+                        firm=response[4].strip()
+                        firm=firm[firm.find(':')+1:]
+                        version=response[7].strip()
+                        version=version[version.find(':')+1:]
+                        check.model=model
+                        check.firm_type=firm
+                        check.version=version
+                    if req_data['command'] == '1':
+                         stdin,stdout,stderr=ssh.exec_command(command)
+                         response=stdout.readlines()
+                         version=response[1].strip()
+                         version=version[version.find(':')+1:]
+                         check.version=version
+                    else:
+                        ssh.exec_command(command)
 
-                    stdin,stdout,stderr=ssh.exec_command(command)
-                    response=stdout.readlines()
                     check.update=default
                     db.session.commit()
                 except:
@@ -200,6 +229,43 @@ class routeradd(Resource):
                 }, 400
 
 
+@router.doc(
+    security='KEY',
+    params={},
+
+    responses={
+        200: 'ok',
+        201: 'created',
+        204: 'No Content',
+        301: 'Resource was moved',
+        304: 'Resource was not Modified',
+        400: 'Bad Request to server',
+        401: 'Unauthorized request from client to server',
+        403: 'Forbidden request from client to server',
+        404: 'Resource Not found',
+        500: 'internal server error, please contact admin and report issue'
+    })
+@router.route('/router/test')
+class routertest(Resource):
+    @token_required
+    @router.expect(test)
+    def post(self):
+        req_data = request.json
+        token = request.headers['API-KEY']
+        data = jwt.decode(token, app.config.get('SECRET_KEY'),algorithms='HS256')
+        user = User.query.filter_by(id=data['id']).first()
+        if user:
+            try:
+                ssh = paramiko.SSHClient()
+                ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+                ssh.connect(hostname=req_data[ "ip"], username=req_data['login'], password=req_data['mdp'])
+                return {
+                        "results": 'success'
+                    }, 200
+            except:
+                return {
+                "results":"Mauvais login ou l'addresse n'existe pas"
+                }, 400
 
 @router.doc(
     security='KEY',
@@ -229,14 +295,6 @@ class routermodify(Resource):
         if user:
             route=Router.query.filter_by(id=int(req_data['id'])).first()
             if route:
-                try:
-                    ssh = paramiko.SSHClient()
-                    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-                    ssh.connect(hostname=req_data[ "ip"], username=req_data['login'], password=req_data['mdp'])
-                except:
-                    return {
-                    "results":"Mauvais login ou l'addresse n'existe pas"
-                    }, 400
                 
                 route.nom=req_data["nom"]
                 route.fabriquant=req_data["fabriquant"]
@@ -245,6 +303,8 @@ class routermodify(Resource):
                 route.ip=req_data[ "ip"]
                 route.login=req_data['login']
                 route.mdp=req_data['mdp']
+                db.session.commit()
+                #print(req_data)
                 return {
                     "results": marshal(route,modify)
                     }, 200

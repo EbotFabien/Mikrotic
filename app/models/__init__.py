@@ -38,12 +38,15 @@ class User(db.Model):
 class Router(db.Model):
     id=db.Column(db.Integer,primary_key=True)
     nom=db.Column(db.String(128))
-    frabiquant=db.Column(db.String(128))
+    fabriquant=db.Column(db.String(128))
     sous_reseau=db.Column(db.String(128))
     mac=db.Column(db.String(128))
     ip=db.Column(db.String(128))
     login=db.Column(db.String(128))
     mdp=db.Column(db.String(128))
+    version=db.Column(db.String(128))
+    model=db.Column(db.String(128))
+    firm_type=db.Column(db.String(128))
     update=db.Column(db.DateTime,index=True,default=datetime.utcnow)
     
 
